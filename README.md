@@ -2,7 +2,7 @@
 Library for flattening and making large XML documents accessible in Go.
 
 ## Flattened XML
-xmlCrush takes a different approach to XML parsing. It developed out of the need to parse massive, heavily nested and non-standardized XML documents into a usable format within Go. Traditional methods of defining structs that reflect the structure of the XML document were not cutting it because of the flexible nature of the documents. Crawling through the document one node at a time was tedious, produced horrendously ugly code, and was prone to breaking. The solution, xmlCrush, allows all data to be brought in no matter the format - it allows for easy extraction of data based on tags, properties, or even by structural relationship. The code to utilize xmlCrush comes out clean and semantic, and allows for easy storage and manipulation.
+XmlCrush takes a different approach to XML parsing. It developed out of the need to parse massive, heavily nested and non-standardized XML documents into a usable format within Go. Traditional methods of defining structs that reflect the structure of the XML document were not cutting it because of the flexible nature of the documents. Crawling through the document one node at a time was tedious, produced horrendously ugly code, and was prone to breaking. The solution, xmlCrush, allows all data to be brought in no matter the format - it allows for easy extraction of data based on tags, properties, or even by structural relationship. The code to utilize xmlCrush comes out clean and semantic, and allows for easy storage and manipulation.
 
 In xmlCrush, an XML document is flattened into a content string and array of nodes. The array of nodes define the tags in the XML document along with their corresponding attributes. The content string defines data defined in and around the nodes - it also defines the position of each node, preserving the relationship between tags. This approach, while unconventional, has a number of benefits:
 
@@ -35,4 +35,65 @@ To crush an XML document from an HTTP endpoint:
 
 	//content is a string that defines the positions of each node as well as content in and around the nodes
 	fmt.Println("content",content)
+````
+The crush method in xmlCrush takes in any io.Reader and returns three arguments. The first is an array of nodes, these nodes define all the tags and their properties as defined in the XML document. The second is a string that defined all the content of the XML document as well as the positions and relationships of the nodes. The third is an error returned in case of crush failure.
+
+## Extracting
+To extract data from xmlCrush output:
+```` go
+
+	//data map (for storing the extracted data)
+	authors := []string
+	links := []string
+
+	//first define an array of extraction rules, add as many rules as needed
+	exts := []xmlCrush.Ext{}
+	//define first extraction rule
+	ext := xmlCrush.Ext{}
+	//define the tags to be extracted from the document, in this case all "<author>" tags will be found in the document
+	ext.Tags = []string{
+		"author", 
+	}
+	//define the callback to be ran for each instance of the tag found
+	ext.Callback = func(n xmlCrush.Node, c string, pos string) (err error) {
+		//n will be the node found with tag type and property data attached
+		fmt.Println("node:",n)
+
+		//c will be the content string found inside the node, nested nodes will be defined by position in this string
+		fmt.Println("inner content:",c)
+
+		//pos is the position string of the extracted node, it will include every parent node by name separated by spaces
+		fmt.Println("pos:",pos)
+
+		//add the inner content of the author tag into the array of authors
+		authors = append(authors, c)
+
+		return
+	}
+	//attach this rule to the list of extraction rules
+	exts = append(exts, ext)
+
+	//second extraction rule
+	ext = xmlCrush.Ext{}
+	//define nested tag rules with parent nodes ahead of the nodes of interest
+	//in this case, all "<a>" tags that are found within the "<footer>" will be extracted
+	ext.Tags = []string{
+		"footer",
+		"a",
+	}
+	ext.Callback = func(n xmlCrush.Node, c string, pos string) (err error) {
+		//store the href attribute on the node into the links array
+		link, exists := n.Attr["href"]
+		if exists {
+			links = append(links, link)
+		}
+		return
+	}
+	exts = append(exts, ext)
+
+	//do all the extractions in one pass, pass in the nodes array and content string from the extraction as well as the array of extraction rules
+	err = xmlCrush.Extract(&nodes, content, exts)
+	if err != nil {
+		//handle error
+	}
 ````
