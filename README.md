@@ -16,84 +16,150 @@ In xmlCrush, an XML document is flattened into a content string and array of nod
 ## Crushing
 To crush an XML document from an HTTP endpoint:
 ```` go
-	import(
-		"fmt"
-		"net/http"
-		"xmlCrush"
-	)
-	resp, err := http.Get("http://pathtoxmldocument.xml")
-	defer resp.Body.Close()
-	if err != nil {
-		//do some error handling
-	}
-	nodes, content, err := xmlCrush.Crush(resp.Body)
-	if err != nil {
-		//do some error handling
-	}
-	//nodes is an array (slice) of struct Node defined in XML crush
-	fmt.Println("nodes",nodes)
+import(
+	"fmt"
+	"net/http"
+	"xmlCrush"
+)
+resp, err := http.Get("http://pathtoxmldocument.xml")
+defer resp.Body.Close()
+if err != nil {
+	//do some error handling
+}
+nodes, content, err := xmlCrush.Crush(resp.Body)
+if err != nil {
+	//do some error handling
+}
+//nodes is an array (slice) of struct Node defined in XML crush
+fmt.Println("nodes",nodes)
 
-	//content is a string that defines the positions of each node as well as content in and around the nodes
-	fmt.Println("content",content)
+//content is a string that defines the positions of each node as well as content in and around the nodes
+fmt.Println("content",content)
 ````
 The crush method in xmlCrush takes in any io.Reader and returns three arguments. The first is an array of nodes, these nodes define all the tags and their properties as defined in the XML document. The second is a string that defined all the content of the XML document as well as the positions and relationships of the nodes. The third is an error returned in case of crush failure.
 
-## Extracting
+## Extract one node
+To extract the first node from xmlCrush output:
+```` go
+//extract the first "<author>" tag from the XML document, 
+node, author, err := xmlCrush.ExtractOne(&nodes, content, "author")
+if err != nil {
+	//handle error
+}
+
+//node contains the author tag and all properties on that tag
+fmt.Println("node:",node)
+
+//author contains all data found inside the author tag
+fmt.Println("author:",author)
+````
+
+## Extract all nodes
+To extract all nodes of a certain tag type:
+```` go
+//extract all "<author>" tags from the XML document
+extAry, err := xmlCrush.ExtractAll(&nodes, content, "author")
+if err != nil {
+	//handle error
+}
+for i := 0; i < len(extAry); i++ {
+	//each element is of the struct type ExtractCell and contains the node, content, and position string of the node
+	elem := extAry[i]
+
+	//n will be the node found with tag type and property data attached
+	fmt.Println("node:",elem.Node)
+
+	//c will be the content string found inside the node, nested nodes will be defined by position in this string
+	fmt.Println("inner content:",elem.Content)
+
+	//pos is the position string of the extracted node, it will include every parent node by name separated by spaces
+	fmt.Println("pos:",elem.Pos)
+}
+````
+
+## Extracting lots of nodes with one pass (most efficient way to extract lots of data)
 To extract data from xmlCrush output:
 ```` go
+//slices for storing the extracted data
+authors := []string
+links := []string
 
-	//slices for storing the extracted data
-	authors := []string
-	links := []string
+//first define an array of extraction rules, add as many rules as needed
+exts := []xmlCrush.Ext{}
+//define first extraction rule
+ext := xmlCrush.Ext{}
+//define the tags to be extracted from the document, in this case all "<author>" tags will be found in the document
+ext.Tags = []string{
+	"author", 
+}
+//define the callback to be ran for each instance of the tag found
+ext.Callback = func(n xmlCrush.Node, c string, pos string) (err error) {
+	//n will be the node found with tag type and property data attached
+	fmt.Println("node:",n)
 
-	//first define an array of extraction rules, add as many rules as needed
-	exts := []xmlCrush.Ext{}
-	//define first extraction rule
-	ext := xmlCrush.Ext{}
-	//define the tags to be extracted from the document, in this case all "<author>" tags will be found in the document
-	ext.Tags = []string{
-		"author", 
+	//c will be the content string found inside the node, nested nodes will be defined by position in this string
+	fmt.Println("inner content:",c)
+
+	//pos is the position string of the extracted node, it will include every parent node by name separated by spaces
+	fmt.Println("pos:",pos)
+
+	//add the inner content of the author tag into the array of authors
+	authors = append(authors, c)
+
+	return
+}
+//attach this rule to the list of extraction rules
+exts = append(exts, ext)
+
+//second extraction rule
+ext = xmlCrush.Ext{}
+//define nested tag rules with parent nodes ahead of the nodes of interest
+//in this case, all "<a>" tags that are found within the "<footer>" will be extracted
+ext.Tags = []string{
+	"footer",
+	"a",
+}
+ext.Callback = func(n xmlCrush.Node, c string, pos string) (err error) {
+	//store the href attribute on the node into the links array
+	link, exists := n.Attr["href"]
+	if exists {
+		links = append(links, link)
 	}
-	//define the callback to be ran for each instance of the tag found
-	ext.Callback = func(n xmlCrush.Node, c string, pos string) (err error) {
-		//n will be the node found with tag type and property data attached
-		fmt.Println("node:",n)
+	return
+}
+exts = append(exts, ext)
 
-		//c will be the content string found inside the node, nested nodes will be defined by position in this string
-		fmt.Println("inner content:",c)
+//do all the extractions in one pass, pass in the nodes array and content string from the extraction as well as the array of extraction rules
+err = xmlCrush.Extract(&nodes, content, exts)
+if err != nil {
+	//handle error
+}
+````
 
-		//pos is the position string of the extracted node, it will include every parent node by name separated by spaces
-		fmt.Println("pos:",pos)
+## Crawling
+To crawl through all nodes of an XML document:
+```` go
+//define the crawl struct
+crawl := xmlCrush.Crawl{
+	Content: content,
+	Nodes:   &nodes,
+}
 
-		//add the inner content of the author tag into the array of authors
-		authors = append(authors, c)
-
-		return
-	}
-	//attach this rule to the list of extraction rules
-	exts = append(exts, ext)
-
-	//second extraction rule
-	ext = xmlCrush.Ext{}
-	//define nested tag rules with parent nodes ahead of the nodes of interest
-	//in this case, all "<a>" tags that are found within the "<footer>" will be extracted
-	ext.Tags = []string{
-		"footer",
-		"a",
-	}
-	ext.Callback = func(n xmlCrush.Node, c string, pos string) (err error) {
-		//store the href attribute on the node into the links array
-		link, exists := n.Attr["href"]
-		if exists {
-			links = append(links, link)
-		}
-		return
-	}
-	exts = append(exts, ext)
-
-	//do all the extractions in one pass, pass in the nodes array and content string from the extraction as well as the array of extraction rules
-	err = xmlCrush.Extract(&nodes, content, exts)
+//iterate through each node
+for !crawl.Done {
+	//next will return the data associated with the next found node
+	node, c, pos, err := crawl.Next()
 	if err != nil {
 		//handle error
 	}
+
+	//n will be the node found with tag type and property data attached
+	fmt.Println("node:",n)
+
+	//c will be the content string found inside the node, nested nodes will be defined by position in this string
+	fmt.Println("inner content:",c)
+
+	//pos is the position string of the extracted node, it will include every parent node by name separated by spaces
+	fmt.Println("pos:",pos)
+}
 ````
