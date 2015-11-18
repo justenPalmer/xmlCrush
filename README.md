@@ -30,7 +30,7 @@ To crush an XML document from an HTTP endpoint:
 	if err != nil {
 		//do some error handling
 	}
-	//nodes is an array of struct Node defined in XML crush
+	//nodes is an array (slice) of struct Node defined in XML crush
 	fmt.Println("nodes",nodes)
 
 	//content is a string that defines the positions of each node as well as content in and around the nodes
@@ -42,7 +42,7 @@ The crush method in xmlCrush takes in any io.Reader and returns three arguments.
 To extract data from xmlCrush output:
 ```` go
 
-	//data map (for storing the extracted data)
+	//slices for storing the extracted data
 	authors := []string
 	links := []string
 
