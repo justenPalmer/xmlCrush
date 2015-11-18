@@ -77,8 +77,8 @@ for i := 0; i < len(extAry); i++ {
 }
 ````
 
-## Extracting lots of nodes with one pass (most efficient way to extract lots of data)
-To extract data from xmlCrush output:
+## Extracting lots of nodes with one pass
+To extract data from xmlCrush output with one pass. This is the most efficient way to extract lots of data:
 ```` go
 //slices for storing the extracted data
 authors := []string
