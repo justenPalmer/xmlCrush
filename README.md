@@ -21,7 +21,7 @@ To crush an XML document from an HTTP endpoint:
 import(
 	"fmt"
 	"net/http"
-	"xmlCrush"
+	"github.com/justenPalmer/xmlCrush"
 )
 resp, err := http.Get("http://pathtoxmldocument.xml")
 defer resp.Body.Close()
