@@ -13,6 +13,8 @@ In xmlCrush, an XML document is flattened into a content string and array of nod
 - Extract data from the document with ease by tag, or even tag chains (by relationship of tags)
 - Iterate recursively through crushed XML data with a single method call
 
+Go Doc: https://godoc.org/github.com/justenPalmer/xmlCrush
+
 ## Crushing
 To crush an XML document from an HTTP endpoint:
 ```` go
