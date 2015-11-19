@@ -80,7 +80,7 @@ for i := 0; i < len(extAry); i++ {
 ````
 
 ## Extracting lots of nodes with one pass
-To extract data from XML Crush output with one pass. This is the most efficient way to extract lots of data:
+This is the most efficient way to extract lots of data. To extract data from XML Crush output with one pass:
 ```` go
 //slices for storing the extracted data
 authors := []string
